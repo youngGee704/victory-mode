@@ -7,10 +7,10 @@ interface BottomNavProps {
 
 export default function BottomNav({ currentPage }: BottomNavProps) {
   const navItems = [
-    { id: "dump", icon: Brain, label: "Dump", href: "/" },
-    { id: "tasks", icon: CheckSquare, label: "Tasks", href: "/tasks" },
-    { id: "focus", icon: Target, label: "Focus", href: "/focus" },
-    { id: "ritual", icon: RotateCcw, label: "Ritual", href: "/ritual" },
+    { id: "dump", icon: Brain, label: "Start", href: "/" },
+    { id: "tasks", icon: CheckSquare, label: "Plan", href: "/tasks" },
+    { id: "focus", icon: Target, label: "Win", href: "/focus" },
+    { id: "ritual", icon: RotateCcw, label: "Prep", href: "/ritual" },
     { id: "settings", icon: Settings, label: "Settings", href: "/settings" },
   ]
 
