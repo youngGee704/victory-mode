@@ -6,6 +6,8 @@ import { Card } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Clock, Play, CheckCircle, RotateCcw, Sparkles } from "lucide-react"
 import { useRouter } from "next/navigation"
+import { useSettings } from "@/hooks/use-settings"
+import { useToast } from "@/hooks/use-toast"
 import BottomNav from "@/components/bottom-nav"
 
 interface Task {
@@ -21,6 +23,8 @@ export default function TasksPage() {
   const [isLoading, setIsLoading] = useState(true)
   const [brainDump, setBrainDump] = useState("")
   const router = useRouter()
+  const { playSound, triggerHaptic, showNotification } = useSettings()
+  const { toast } = useToast()
 
   useEffect(() => {
     const loadTasks = async () => {
@@ -86,17 +90,34 @@ export default function TasksPage() {
     const updatedTasks = tasks.map((task) => (task.id === taskId ? { ...task, completed: !task.completed } : task))
     setTasks(updatedTasks)
     localStorage.setItem("currentTasks", JSON.stringify(updatedTasks))
+
+    const task = updatedTasks.find((t) => t.id === taskId)
+    if (task?.completed) {
+      triggerHaptic("heavy")
+      playSound("complete")
+      showNotification("🎉 Task Complete!", "Another win logged! Keep the momentum going!")
+
+      toast({
+        title: "✅ Win logged!",
+        description: "That's momentum! Keep stacking those victories.",
+      })
+    } else {
+      triggerHaptic("light")
+      playSound("click")
+    }
   }
 
   const startFocusMode = (taskId: string) => {
     localStorage.setItem("focusTaskId", taskId)
+    triggerHaptic("medium")
+    playSound("success")
     router.push("/focus")
   }
 
   const getTimeColor = (minutes: number) => {
-    if (minutes <= 10) return "bg-green-100 text-green-800"
-    if (minutes <= 20) return "bg-yellow-100 text-yellow-800"
-    return "bg-red-100 text-red-800"
+    if (minutes <= 10) return "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300"
+    if (minutes <= 20) return "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300"
+    return "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300"
   }
 
   const completedCount = tasks.filter((t) => t.completed).length
@@ -104,27 +125,32 @@ export default function TasksPage() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-purple-100 via-pink-50 to-blue-100 flex items-center justify-center pb-20">
-        <Card className="p-8 text-center">
-          <Sparkles className="w-12 h-12 mx-auto mb-4 animate-spin text-purple-600" />
-          <h2 className="text-xl font-semibold mb-2">Breaking down your thoughts...</h2>
-          <p className="text-gray-600">Turning chaos into clarity ✨</p>
+      <div className="min-h-screen bg-gradient-to-br from-purple-100 via-pink-50 to-blue-100 dark:from-gray-900 dark:via-purple-900 dark:to-gray-800 flex items-center justify-center pb-20">
+        <Card className="p-8 text-center bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm">
+          <Sparkles className="w-12 h-12 mx-auto mb-4 animate-spin text-purple-600 dark:text-purple-400" />
+          <h2 className="text-xl font-semibold mb-2 text-gray-800 dark:text-white">Breaking down your thoughts...</h2>
+          <p className="text-gray-600 dark:text-gray-300">Turning chaos into clarity ✨</p>
         </Card>
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-purple-100 via-pink-50 to-blue-100 pb-20">
+    <div className="min-h-screen bg-gradient-to-br from-purple-100 via-pink-50 to-blue-100 dark:from-gray-900 dark:via-purple-900 dark:to-gray-800 pb-20">
       <div className="container mx-auto px-4 py-8">
         {/* Header */}
         <div className="text-center mb-6">
-          <h1 className="text-2xl font-bold text-gray-800 mb-2">Your Action Plan</h1>
+          <h1 className="text-2xl font-bold text-gray-800 dark:text-white mb-2">Your Victory Plan</h1>
           <div className="flex items-center justify-center gap-4">
-            <Badge variant="outline" className="text-lg px-4 py-2">
+            <Badge variant="outline" className="text-lg px-4 py-2 bg-white/50 dark:bg-gray-800/50">
               {completedCount} of {totalTasks} complete
             </Badge>
-            <Button onClick={() => router.push("/")} variant="outline" size="sm">
+            <Button
+              onClick={() => router.push("/")}
+              variant="outline"
+              size="sm"
+              className="transform active:scale-95 transition-transform"
+            >
               <RotateCcw className="w-4 h-4 mr-2" />
               New Dump
             </Button>
@@ -133,13 +159,13 @@ export default function TasksPage() {
 
         {/* Progress Bar */}
         <div className="mb-6">
-          <div className="w-full bg-gray-200 rounded-full h-3">
+          <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-3">
             <div
               className="bg-gradient-to-r from-purple-600 to-pink-600 h-3 rounded-full transition-all duration-500"
               style={{ width: `${totalTasks > 0 ? (completedCount / totalTasks) * 100 : 0}%` }}
             />
           </div>
-          <p className="text-center text-sm text-gray-600 mt-2">
+          <p className="text-center text-sm text-gray-600 dark:text-gray-400 mt-2">
             You're on {completedCount} of {totalTasks} 💪
           </p>
         </div>
@@ -149,14 +175,17 @@ export default function TasksPage() {
           {tasks.map((task, index) => (
             <Card
               key={task.id}
-              className={`p-4 transition-all duration-300 ${
+              className={`p-4 transition-all duration-300 card-hover ${
                 task.completed
-                  ? "bg-green-50 border-green-200 opacity-75"
-                  : "bg-white/80 backdrop-blur-sm border-purple-200 hover:shadow-lg"
+                  ? "bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800 opacity-75 victory-bounce"
+                  : "bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm border-purple-200 dark:border-purple-700 hover:shadow-lg"
               }`}
             >
               <div className="flex items-start gap-4">
-                <button onClick={() => toggleTask(task.id)} className="mt-1 flex-shrink-0">
+                <button
+                  onClick={() => toggleTask(task.id)}
+                  className="mt-1 flex-shrink-0 transform active:scale-95 transition-transform"
+                >
                   <CheckCircle
                     className={`w-6 h-6 ${
                       task.completed ? "text-green-600 fill-current" : "text-gray-400 hover:text-green-600"
@@ -167,7 +196,7 @@ export default function TasksPage() {
                 <div className="flex-1 min-w-0">
                   <h3
                     className={`text-lg font-medium mb-2 ${
-                      task.completed ? "line-through text-gray-500" : "text-gray-800"
+                      task.completed ? "line-through text-gray-500 dark:text-gray-400" : "text-gray-800 dark:text-white"
                     }`}
                   >
                     {task.title}
@@ -178,18 +207,24 @@ export default function TasksPage() {
                       <Clock className="w-3 h-3 mr-1" />
                       {task.estimatedTime} min
                     </Badge>
-                    <span className="text-sm text-gray-500">Task {index + 1}</span>
+                    <p className="text-xs text-purple-600 dark:text-purple-400 font-medium">
+                      {index % 2 === 0 ? "One step closer to victory." : "Crush this, then rest."}
+                    </p>
+                    <span className="text-sm text-gray-500 dark:text-gray-400">Task {index + 1}</span>
                   </div>
 
                   {!task.completed && (
                     <Button
                       onClick={() => startFocusMode(task.id)}
                       size="sm"
-                      className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700"
+                      className="btn-victory transform active:scale-95 transition-transform"
                     >
                       <Play className="w-4 h-4 mr-2" />
-                      Start Focus
+                      Let's Go
                     </Button>
+                  )}
+                  {task.completed && (
+                    <div className="mt-2 text-sm font-medium text-green-700 dark:text-green-300">✅ Win logged!</div>
                   )}
                 </div>
               </div>
@@ -199,10 +234,10 @@ export default function TasksPage() {
 
         {/* Motivational Message */}
         {completedCount > 0 && (
-          <Card className="mt-6 p-4 bg-gradient-to-r from-green-50 to-blue-50 border-green-200">
-            <p className="text-center text-lg font-medium text-gray-800">
-              🎉 Amazing progress!{" "}
-              {completedCount === totalTasks ? "You've conquered your list!" : "Keep the momentum going!"}
+          <Card className="mt-6 p-4 bg-gradient-to-r from-green-50 to-blue-50 dark:from-green-900/20 dark:to-blue-900/20 border-green-200 dark:border-green-800">
+            <p className="text-center text-lg font-medium text-gray-800 dark:text-white">
+              🎉 That's momentum!{" "}
+              {completedCount === totalTasks ? "You've conquered your victory plan!" : "Keep the wins coming!"}
             </p>
           </Card>
         )}

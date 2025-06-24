@@ -14,6 +14,12 @@ export default function BrainDumpPage() {
   const [isProcessing, setIsProcessing] = useState(false)
   const recognitionRef = useRef<any>(null)
   const router = useRouter()
+  const inputLabels = [
+    "Drop your chaos here.",
+    "What's stealing your focus today?",
+    "Victory starts with a brain dump.",
+  ]
+  const [currentInputLabel, setCurrentInputLabel] = useState(inputLabels[0])
 
   useEffect(() => {
     // Initialize speech recognition
@@ -35,6 +41,12 @@ export default function BrainDumpPage() {
         setIsListening(false)
       }
     }
+
+    const intervalId = setInterval(() => {
+      setCurrentInputLabel(inputLabels[Math.floor(Math.random() * inputLabels.length)])
+    }, 5000)
+
+    return () => clearInterval(intervalId)
   }, [])
 
   const toggleListening = () => {
@@ -81,19 +93,19 @@ export default function BrainDumpPage() {
             <Brain className="w-8 h-8 text-purple-600" />
             <h1 className="text-3xl font-bold text-gray-800">Victory Mode</h1>
           </div>
-          <p className="text-lg text-gray-600 mb-2">Built for brains that race faster than plans</p>
+          <p className="text-lg text-gray-600 mb-2">Built for minds that move fast — and still want to win.</p>
           <p className="text-sm text-purple-600 font-medium">{randomQuote}</p>
         </div>
 
         {/* Main Input Card */}
         <Card className="p-6 mb-6 shadow-lg border-0 bg-white/80 backdrop-blur-sm">
           <div className="space-y-4">
-            <label className="block text-xl font-semibold text-gray-800 mb-4">What's crowding your mind today?</label>
+            <label className="block text-xl font-semibold text-gray-800 mb-4">{currentInputLabel}</label>
 
             <Textarea
               value={input}
               onChange={(e) => setInput(e.target.value)}
-              placeholder="Dump everything here... work tasks, errands, worries, ideas, anything that's taking up mental space..."
+              placeholder="Drop everything here... work tasks, errands, worries, ideas, anything that's racing through your mind..."
               className="min-h-[200px] text-lg border-2 border-purple-200 focus:border-purple-400 resize-none"
               style={{ fontSize: "18px" }}
             />
@@ -144,9 +156,9 @@ export default function BrainDumpPage() {
         <Card className="p-4 bg-gradient-to-r from-blue-50 to-purple-50 border-blue-200">
           <h3 className="font-semibold text-gray-800 mb-2">💡 Pro Tips:</h3>
           <ul className="text-sm text-gray-600 space-y-1">
-            <li>• Include everything - work, personal, random thoughts</li>
-            <li>• Don't worry about organization - that's what I'm for!</li>
-            <li>• Use voice input for stream-of-consciousness dumps</li>
+            <li>• Victory starts with getting it all out of your head</li>
+            <li>• Don't organize - just dump everything</li>
+            <li>• Use voice input for stream-of-consciousness flow</li>
           </ul>
         </Card>
       </div>

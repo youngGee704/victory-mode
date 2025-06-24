@@ -24,6 +24,7 @@ export default function FocusPage() {
   const [showStuckHelp, setShowStuckHelp] = useState(false)
   const intervalRef = useRef<NodeJS.Timeout | null>(null)
   const router = useRouter()
+  const [timerJustCompleted, setTimerJustCompleted] = useState(false)
 
   useEffect(() => {
     // Load the current focus task
@@ -71,6 +72,7 @@ export default function FocusPage() {
 
   const handleTimerComplete = () => {
     setIsRunning(false)
+    setTimerJustCompleted(true)
 
     if (soundEnabled) {
       // Play completion sound (you could add actual audio here)
@@ -155,8 +157,10 @@ export default function FocusPage() {
       <div className="container mx-auto px-4 py-8">
         {/* Header */}
         <div className="text-center mb-8">
-          <h1 className="text-2xl font-bold text-gray-800 mb-2">{isBreak ? "☕ Break Time" : "🎯 Focus Mode"}</h1>
-          <p className="text-gray-600">{isBreak ? "Recharge for the next session" : "One task. One goal. No noise."}</p>
+          <h1 className="text-2xl font-bold text-gray-800 mb-2">{isBreak ? "☕ Break Time" : "🎯 Victory Mode"}</h1>
+          <p className="text-gray-600">
+            {isBreak ? "Recharge for the next session" : "One task. One win. Total focus."}
+          </p>
         </div>
 
         {/* Current Task */}
@@ -216,7 +220,7 @@ export default function FocusPage() {
               ) : (
                 <>
                   <Play className="w-5 h-5 mr-2" />
-                  Start
+                  Enter Victory Mode
                 </>
               )}
             </Button>
@@ -242,20 +246,32 @@ export default function FocusPage() {
               className="w-full py-4 text-lg"
             >
               <HelpCircle className="w-5 h-5 mr-2" />
-              I'm stuck
+              Need a Boost?
             </Button>
 
             {showStuckHelp && (
               <Card className="p-4 bg-yellow-50 border-yellow-200">
-                <p className="text-lg font-medium text-gray-800 mb-2">💡 {randomStuckMessage}</p>
-                <p className="text-sm text-gray-600">Remember: You're not behind. You're starting now.</p>
+                {/* <p className="text-lg font-medium text-gray-800 mb-2">💡 {randomStuckMessage}</p>
+                <p className="text-sm text-gray-600">Remember: You're not behind. You're starting now.</p> */}
+                <div className="flex flex-col gap-2">
+                  <Button variant="outline">Skip</Button>
+                  <Button variant="outline">Break it down</Button>
+                  <Button variant="outline">Try easier task</Button>
+                </div>
               </Card>
             )}
 
             <Button onClick={completeTask} size="lg" className="w-full py-4 text-lg bg-green-600 hover:bg-green-700">
-              ✅ Mark Task Complete
+              ✅ Start This Win
             </Button>
           </div>
+        )}
+
+        {timerJustCompleted && (
+          <Card className="p-4 mb-4 bg-gradient-to-r from-green-50 to-yellow-50 border-green-200">
+            <p className="text-center text-lg font-bold text-gray-800">🏆 Task Complete! You're stacking wins.</p>
+            <p className="text-center text-sm text-gray-600 mt-1">Another win down. Keep going!</p>
+          </Card>
         )}
 
         {/* Break Activities */}
