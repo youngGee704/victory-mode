@@ -205,11 +205,13 @@ Return ONLY the JSON array.`,
         // Store tasks in localStorage for /tasks page
         localStorage.setItem("tasks", JSON.stringify(parsedTasks));
         localStorage.setItem("timestamp", new Date().toISOString());
+        // Navigate to tasks page automatically
+        router.push("/tasks");
       }
 
       toast({
         title: "🧠 Victory Plan Created!",
-        description: "Your tasks are ready. Navigate to Tasks to view them.",
+        description: "Your tasks are ready. Navigating to Plan to view them.",
       });
     } catch (aiError) {
       console.error("🔥 AI generation failed:", aiError);
