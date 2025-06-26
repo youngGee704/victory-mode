@@ -3,7 +3,6 @@
 import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
 import { CheckCircle, Flame, Calendar } from "lucide-react"
 import { useRouter } from "next/navigation"
 import { useSettings } from "@/hooks/use-settings"
@@ -15,6 +14,7 @@ interface Ritual {
   name: string
   icon: string
   completed: boolean
+  completionMessage: string
 }
 
 interface DailyStats {
@@ -29,12 +29,30 @@ export default function RitualPage() {
   const { toast } = useToast()
 
   const [rituals, setRituals] = useState<Ritual[]>([
-    { id: "hydrate", name: "Hydrate", icon: "🧊", completed: false },
-    { id: "tidy", name: "Quick Tidy", icon: "🧹", completed: false },
-    { id: "stretch", name: "Stretch", icon: "🧘‍♂️", completed: false },
-    { id: "gratitude", name: "Gratitude", icon: "📖", completed: false },
-    { id: "breathe", name: "Deep Breaths", icon: "🫁", completed: false },
-    { id: "plan", name: "Set Intention", icon: "🎯", completed: false },
+    { id: "hydrate", name: "Hydrate", icon: "🥝", completed: false, completionMessage: "Got my sip in! 🚀" },
+    { id: "tidy", name: "Quick Tidy", icon: "🧹", completed: false, completionMessage: "Cleared my zone 🧼" },
+    {
+      id: "stretch",
+      name: "Stretch + Breathe",
+      icon: "🧘",
+      completed: false,
+      completionMessage: "Quick stretch and 3 deep breaths",
+    },
+    { id: "gratitude", name: "Gratitude", icon: "📖", completed: false, completionMessage: "Grateful for ___ 🙏" },
+    {
+      id: "intention",
+      name: "Set Intention",
+      icon: "🎯",
+      completed: false,
+      completionMessage: "Today I win if I _____.",
+    },
+    {
+      id: "anthem",
+      name: "Victory Anthem",
+      icon: "🎵",
+      completed: false,
+      completionMessage: "Started my anthem 🎶",
+    },
   ])
 
   const [streak, setStreak] = useState(0)
@@ -77,9 +95,10 @@ export default function RitualPage() {
   }
 
   const toggleRitual = (ritualId: string) => {
-    const updatedRituals = rituals.map((ritual) =>
-      ritual.id === ritualId ? { ...ritual, completed: !ritual.completed } : ritual,
-    )
+    const ritual = rituals.find((r) => r.id === ritualId)
+    if (!ritual) return
+
+    const updatedRituals = rituals.map((r) => (r.id === ritualId ? { ...r, completed: !r.completed } : r))
     setRituals(updatedRituals)
 
     const completedIds = updatedRituals.filter((r) => r.completed).map((r) => r.id)
@@ -88,6 +107,14 @@ export default function RitualPage() {
     // Play feedback
     triggerHaptic("light")
     playSound("click")
+
+    // Show completion message
+    if (!ritual.completed) {
+      toast({
+        title: `${ritual.icon} ${ritual.name} Complete!`,
+        description: ritual.completionMessage,
+      })
+    }
 
     // Save today's stats
     const today = new Date().toDateString()
@@ -174,7 +201,7 @@ export default function RitualPage() {
               <Flame className="w-5 h-5 text-orange-500" />
               <span className="text-2xl font-bold text-gray-800 dark:text-white">{streak}</span>
             </div>
-            <p className="text-sm text-gray-600 dark:text-gray-400">Day Streak</p>
+            <p className="text-sm text-gray-600 dark:text-gray-400">Day Streak 🔥</p>
           </Card>
 
           <Card className="p-4 text-center bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm border-0 shadow-lg">
@@ -184,14 +211,14 @@ export default function RitualPage() {
                 {completedCount}/{rituals.length}
               </span>
             </div>
-            <p className="text-sm text-gray-600 dark:text-gray-400">Today's Progress</p>
+            <p className="text-sm text-gray-600 dark:text-gray-400">Today's Progress 📅</p>
           </Card>
         </div>
 
         {/* Progress Bar */}
         <Card className="p-4 mb-6 bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm border-0 shadow-lg">
           <div className="flex items-center justify-between mb-2">
-            <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Daily Progress</span>
+            <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Progress Bar 📈</span>
             <span className="text-sm text-gray-600 dark:text-gray-400">{Math.round(progressPercentage)}%</span>
           </div>
           <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-3">
@@ -235,9 +262,7 @@ export default function RitualPage() {
                     {ritual.name}
                   </h3>
                   {ritual.completed && (
-                    <Badge className="mt-1 bg-green-100 text-green-800 dark:bg-green-800 dark:text-green-100">
-                      ✓ Complete
-                    </Badge>
+                    <p className="text-sm text-green-700 dark:text-green-300 mt-1">"{ritual.completionMessage}"</p>
                   )}
                 </div>
                 <CheckCircle
@@ -269,7 +294,7 @@ export default function RitualPage() {
             onClick={resetDay}
             variant="outline"
             size="lg"
-            className="w-full transform active:scale-95 transition-transform"
+            className="w-full transform active:scale-95 transition-transform bg-transparent"
           >
             Restart Ritual Flow
           </Button>
@@ -277,13 +302,12 @@ export default function RitualPage() {
 
         {/* Tips */}
         <Card className="mt-6 p-4 bg-gradient-to-r from-blue-50 to-purple-50 dark:from-blue-900/20 dark:to-purple-900/20 border-blue-200 dark:border-blue-800">
-          <h3 className="font-semibold text-gray-800 dark:text-white mb-2">💡 Ritual Tips:</h3>
+          <h3 className="font-semibold text-gray-800 dark:text-white mb-2">💡 Tips:</h3>
           <ul className="text-sm text-gray-600 dark:text-gray-300 space-y-1">
-            <li>Choose 3-4 rituals that energize you most</li>
-            <li>Complete them in the same order each day</li>
-            <li>Start small - even 30 seconds counts!</li>
-            <li>Consistency beats perfection</li>
-            <li>Finish this? You're already winning — even before your first task.</li>
+            <li>• Choose 3–4 rituals that energize you most</li>
+            <li>• Complete them in the same order each day</li>
+            <li>• Even 30 seconds counts</li>
+            <li>• Consistency beats perfection</li>
           </ul>
         </Card>
       </div>
