@@ -263,41 +263,15 @@ export default function FocusPage() {
         {!isBreak && (
           <Card className="p-6 mb-6 bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm card-hover">
             <h2 className="text-xl font-semibold text-gray-800 dark:text-white mb-2">Current Task:</h2>
-            <p className="text-lg text-gray-700 dark:text-gray-300">{currentTask.title}</p>
+            <p className="text-lg text-gray-700 dark: text-gray-300">{currentTask.title}</p>
             {currentTask.description && (
               <p className="text-sm text-gray-600 dark:text-gray-400 mt-2">{currentTask.description}</p>
             )}
           </Card>
         )}
 
-        {/* Victory Mantra Input */}
-        {!isBreak && (
-          <Card className="p-4 mb-6 bg-gradient-to-r from-yellow-50 to-orange-50 dark:from-yellow-900/20 dark:to-orange-900/20 border-yellow-200 dark:border-yellow-800">
-            <h3 className="text-sm font-semibold text-gray-800 dark:text-white mb-2">Victory Mantra (Optional)</h3>
-            <div className="flex gap-2">
-              <Textarea
-                value={victoryMantra}
-                onChange={(e) => setVictoryMantra(e.target.value)}
-                placeholder="I've got this... I'm focused... I'm unstoppable..."
-                className="flex-1 min-h-[60px] text-sm resize-none"
-              />
-              <Button
-                onClick={toggleMantraListening}
-                variant={isListeningMantra ? "destructive" : "outline"}
-                size="sm"
-                className="px-3"
-              >
-                {isListeningMantra ? <MicOff className="w-4 h-4" /> : <Mic className="w-4 h-4" />}
-              </Button>
-            </div>
-            {victoryMantra && (
-              <p className="text-xs text-gray-600 dark:text-gray-400 mt-2">💪 Your mantra: "{victoryMantra}"</p>
-            )}
-          </Card>
-        )}
-
-        {/* Timer Display */}
-        <Card className="p-8 mb-6 text-center bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm">
+        {/* Timer */}
+        <Card className="p-8 mb-6 text-center bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm card-hover">
           <div className="relative mb-6">
             <div className="w-48 h-48 mx-auto relative">
               <svg className="w-full h-full transform -rotate-90" viewBox="0 0 100 100">
@@ -306,7 +280,7 @@ export default function FocusPage() {
                   cy="50"
                   r="45"
                   stroke="currentColor"
-                  strokeWidth="8"
+                  strokeWidth="2"
                   fill="none"
                   className="text-gray-200 dark:text-gray-700"
                 />
@@ -315,15 +289,21 @@ export default function FocusPage() {
                   cy="50"
                   r="45"
                   stroke="currentColor"
-                  strokeWidth="8"
+                  strokeWidth="4"
                   fill="none"
                   strokeDasharray={`${2 * Math.PI * 45}`}
                   strokeDashoffset={`${2 * Math.PI * 45 * (1 - getProgressPercentage() / 100)}`}
-                  className={`transition-all duration-1000 ${isBreak ? "text-green-500" : "text-purple-500"}`}
+                  className={`transition-all duration-1000 ${
+                    isBreak ? "text-green-500" : "text-purple-600 dark:text-purple-400"
+                  }`}
+                  strokeLinecap="round"
                 />
               </svg>
               <div className="absolute inset-0 flex items-center justify-center">
-                <span className="text-4xl font-bold text-gray-800 dark:text-white">{formatTime(timeLeft)}</span>
+                <div className="text-center">
+                  <div className="text-4xl font-bold text-gray-800 dark:text-white">{formatTime(timeLeft)}</div>
+                  <div className="text-sm text-gray-600 dark:text-gray-400">{isBreak ? "Break" : "Focus"} Time</div>
+                </div>
               </div>
             </div>
           </div>
@@ -332,135 +312,114 @@ export default function FocusPage() {
             <Button
               onClick={toggleTimer}
               size="lg"
-              className={`px-8 py-4 text-lg transform active:scale-95 transition-transform ${
-                isBreak ? "bg-green-600 hover:bg-green-700 dark:bg-green-700 dark:hover:bg-green-600" : "btn-victory"
-              }`}
+              className={`transform active:scale-95 transition-transform ${isBreak ? "btn-success" : "btn-victory"}`}
             >
-              {isRunning ? (
-                <>
-                  <Pause className="w-5 h-5 mr-2" />
-                  Pause
-                </>
-              ) : (
-                <>
-                  <Play className="w-5 h-5 mr-2" />
-                  Start This Win
-                </>
-              )}
+              {isRunning ? <Pause className="w-6 h-6 mr-2" /> : <Play className="w-6 h-6 mr-2" />}
+              {isRunning ? "Pause" : "Start"}
             </Button>
 
             <Button
               onClick={skipSession}
               variant="outline"
               size="lg"
-              className="px-6 py-4 transform active:scale-95 transition-transform bg-transparent"
+              className="transform active:scale-95 transition-transform bg-transparent"
             >
-              <SkipForward className="w-5 h-5 mr-2" />
+              <SkipForward className="w-6 h-6 mr-2" />
               Skip
             </Button>
+          </div>
 
+          <div className="flex justify-center gap-2">
             <Button
-              onClick={() => {
-                triggerHaptic("light")
-                playSound("click")
-              }}
-              variant="outline"
-              size="lg"
-              className="px-6 py-4 transform active:scale-95 transition-transform"
+              onClick={() => playSound("click")}
+              variant="ghost"
+              size="sm"
+              className="transform active:scale-95 transition-transform"
             >
-              {settings.soundEnabled ? <Volume2 className="w-5 h-5" /> : <VolumeX className="w-5 h-5" />}
+              {settings.soundEnabled ? <Volume2 className="w-4 h-4" /> : <VolumeX className="w-4 h-4" />}
             </Button>
           </div>
         </Card>
 
-        {/* Action Buttons */}
-        {!isBreak && (
-          <div className="space-y-4">
+        {/* Victory Mantra */}
+        <Card className="p-6 mb-6 bg-gradient-to-r from-yellow-50 to-orange-50 dark:from-yellow-900/20 dark:to-orange-900/20 border-yellow-200 dark:border-yellow-800">
+          <h3 className="font-semibold text-gray-800 dark:text-white mb-3">💪 Victory Mantra</h3>
+          <div className="flex gap-2 mb-3">
+            <Textarea
+              value={victoryMantra}
+              onChange={(e) => setVictoryMantra(e.target.value)}
+              placeholder="What's your victory mantra? 'I can do this!' or 'One step at a time!'"
+              className="flex-1 min-h-16 resize-none"
+            />
             <Button
-              onClick={() => {
-                setShowStuckHelp(!showStuckHelp)
-                triggerHaptic("light")
-                playSound("click")
-              }}
-              variant="outline"
-              size="lg"
-              className="w-full py-4 text-lg transform active:scale-95 transition-transform"
+              onClick={toggleMantraListening}
+              variant={isListeningMantra ? "destructive" : "outline"}
+              size="sm"
+              className="transform active:scale-95 transition-transform"
             >
-              <HelpCircle className="w-5 h-5 mr-2" />
-              Need a Boost?
-            </Button>
-
-            {showStuckHelp && (
-              <Card className="p-4 bg-yellow-50 dark:bg-yellow-900/20 border-yellow-200 dark:border-yellow-800">
-                <div className="flex flex-col gap-2">
-                  <Button
-                    variant="outline"
-                    onClick={() => handleStuckOption("skip")}
-                    className="transform active:scale-95 transition-transform"
-                  >
-                    Skip
-                  </Button>
-                  <Button
-                    variant="outline"
-                    onClick={() => handleStuckOption("break")}
-                    className="transform active:scale-95 transition-transform"
-                  >
-                    Break it down
-                  </Button>
-                  <Button
-                    variant="outline"
-                    onClick={() => handleStuckOption("easier")}
-                    className="transform active:scale-95 transition-transform"
-                  >
-                    Try easier task
-                  </Button>
-                </div>
-              </Card>
-            )}
-
-            <Button
-              onClick={completeTask}
-              size="lg"
-              className="w-full py-4 text-lg bg-green-600 hover:bg-green-700 dark:bg-green-700 dark:hover:bg-green-600 transform active:scale-95 transition-transform"
-            >
-              ✅ Mark Complete
+              {isListeningMantra ? <MicOff className="w-4 h-4" /> : <Mic className="w-4 h-4" />}
             </Button>
           </div>
-        )}
-
-        {timerJustCompleted && (
-          <Card className="p-4 mb-4 bg-gradient-to-r from-green-50 to-yellow-50 dark:from-green-900/20 dark:to-yellow-900/20 border-green-200 dark:border-green-800 victory-bounce">
-            <p className="text-center text-lg font-bold text-gray-800 dark:text-white">
-              🏆 Task Complete! You're stacking wins.
-            </p>
-            <p className="text-center text-sm text-gray-600 dark:text-gray-300 mt-1">Another win down. Keep going!</p>
-          </Card>
-        )}
-
-        {/* Break Activities */}
-        {isBreak && (
-          <Card className="p-6 bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800">
-            <h3 className="text-lg font-semibold text-gray-800 dark:text-white mb-4">Break Ideas:</h3>
-            <div className="grid grid-cols-2 gap-3">
-              <div className="text-center p-3 bg-white dark:bg-gray-700 rounded-lg">
-                <span className="text-2xl mb-2 block">🧊</span>
-                <span className="text-sm text-gray-700 dark:text-gray-300">Hydrate</span>
-              </div>
-              <div className="text-center p-3 bg-white dark:bg-gray-700 rounded-lg">
-                <span className="text-2xl mb-2 block">🧘‍♂️</span>
-                <span className="text-sm text-gray-700 dark:text-gray-300">Stretch</span>
-              </div>
-              <div className="text-center p-3 bg-white dark:bg-gray-700 rounded-lg">
-                <span className="text-2xl mb-2 block">👀</span>
-                <span className="text-sm text-gray-700 dark:text-gray-300">Rest Eyes</span>
-              </div>
-              <div className="text-center p-3 bg-white dark:bg-gray-700 rounded-lg">
-                <span className="text-2xl mb-2 block">🚶‍♂️</span>
-                <span className="text-sm text-gray-700 dark:text-gray-300">Walk</span>
-              </div>
+          {victoryMantra && (
+            <div className="p-3 bg-white dark:bg-gray-700 rounded-lg">
+              <p className="text-center font-medium text-purple-600 dark:text-purple-400">"{victoryMantra}"</p>
             </div>
-          </Card>
-        )}
+          )}
+        </Card>
+
+        {/* Action Buttons */}
+        <div className="space-y-4">
+          {!isBreak && (
+            <Button
+              onClick={completeTask}
+              className="w-full btn-victory transform active:scale-95 transition-transform"
+              size="lg"
+            >
+              ✅ Mark Task Complete
+            </Button>
+          )}
+
+          <Button
+            onClick={() => setShowStuckHelp(!showStuckHelp)}
+            variant="outline"
+            className="w-full transform active:scale-95 transition-transform bg-transparent"
+          >
+            <HelpCircle className="w-4 h-4 mr-2" />
+            Feeling Stuck?
+          </Button>
+
+          {showStuckHelp && (
+            <Card className="p-4 bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800">
+              <h4 className="font-medium text-gray-800 dark:text-white mb-3">🤔 Stuck? Try this:</h4>
+              <div className="space-y-2">
+                <Button
+                  onClick={() => handleStuckOption("break")}
+                  variant="outline"
+                  size="sm"
+                  className="w-full justify-start bg-transparent"
+                >
+                  🔨 Break the task into smaller pieces
+                </Button>
+                <Button
+                  onClick={() => handleStuckOption("easier")}
+                  variant="outline"
+                  size="sm"
+                  className="w-full justify-start bg-transparent"
+                >
+                  🎯 Switch to an easier task first
+                </Button>
+                <Button
+                  onClick={() => handleStuckOption("skip")}
+                  variant="outline"
+                  size="sm"
+                  className="w-full justify-start bg-transparent"
+                >
+                  ⏭️ Skip this session and try later
+                </Button>
+              </div>
+            </Card>
+          )}
+        </div>
       </div>
 
       <BottomNav currentPage="focus" />
