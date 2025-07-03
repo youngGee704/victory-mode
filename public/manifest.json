@@ -1,27 +1,29 @@
 {
-  "name": "Victory Mode - ADHD Productivity Companion",
+  "name": "Victory Mode - ADHD Productivity Tool",
   "short_name": "Victory Mode",
-  "description": "Built for brains that race faster than plans",
+  "description": "Transform your thoughts into actionable plans. Built for minds that think differently.",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#ffffff",
   "theme_color": "#8B5CF6",
-  "orientation": "portrait",
+  "orientation": "portrait-primary",
+  "categories": ["productivity", "health", "lifestyle"],
+  "lang": "en-US",
+  "scope": "/",
   "icons": [
     {
       "src": "/icon-192x192.png",
       "sizes": "192x192",
       "type": "image/png",
-      "purpose": "any maskable"
+      "purpose": "maskable any"
     },
     {
       "src": "/icon-512x512.png",
       "sizes": "512x512",
       "type": "image/png",
-      "purpose": "any maskable"
+      "purpose": "maskable any"
     }
   ],
-  "categories": ["productivity", "health", "lifestyle"],
-  "lang": "en",
-  "dir": "ltr"
+  "permissions": ["microphone"],
+  "prefer_related_applications": false
 }
