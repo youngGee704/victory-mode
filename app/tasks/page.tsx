@@ -1,140 +1,137 @@
+"use client"
 
-"use client";
-
-import { useState, useEffect } from "react";
-import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Clock, Play, CheckCircle, RotateCcw, Sparkles, AlertCircle, Zap, Brain } from "lucide-react";
-import { useRouter } from "next/navigation";
-import { useSettings } from "@/hooks/use-settings";
-import { useToast } from "@/hooks/use-toast";
-import BottomNav from "@/components/bottom-nav";
+import { useState, useEffect } from "react"
+import { Button } from "@/components/ui/button"
+import { Card } from "@/components/ui/card"
+import { Badge } from "@/components/ui/badge"
+import { Clock, Play, CheckCircle, RotateCcw, Sparkles, AlertCircle, Zap, Brain } from "lucide-react"
+import { useRouter } from "next/navigation"
+import { useSettings } from "@/hooks/use-settings"
+import { useToast } from "@/hooks/use-toast"
+import BottomNav from "@/components/bottom-nav"
 
 interface Task {
-  id: string;
-  title: string;
-  estimatedTime: number;
-  completed: boolean;
-  description?: string;
-  motivationalLine: string;
+  id: string
+  title: string
+  estimatedTime: number
+  completed: boolean
+  description?: string
+  motivationalLine: string
 }
 
 export default function TasksPage() {
-  const [tasks, setTasks] = useState<Task[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [isRegenerating, setIsRegenerating] = useState(false);
-  const router = useRouter();
-  const { playSound, triggerHaptic, showNotification } = useSettings();
-  const { toast } = useToast();
+  const [tasks, setTasks] = useState<Task[]>([])
+  const [isLoading, setIsLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+  const [isRegenerating, setIsRegenerating] = useState(false)
+  const router = useRouter()
+  const { playSound, triggerHaptic, showNotification } = useSettings()
+  const { toast } = useToast()
 
   useEffect(() => {
-    loadTasks();
-  }, []);
+    loadTasks()
+  }, [])
 
   const loadTasks = () => {
     try {
-      const storedTasks = localStorage.getItem("tasks");
+      const storedTasks = localStorage.getItem("currentTasks")
       if (!storedTasks) {
-        setError("No tasks found. Create a new brain dump.");
+        setError("No tasks found. Create a new brain dump.")
         toast({
           title: "No Tasks",
           description: "Please create a new brain dump to generate tasks.",
           variant: "destructive",
-        });
-        router.push("/");
-        return;
+        })
+        router.push("/")
+        return
       }
 
-      const parsedTasks: Task[] = JSON.parse(storedTasks);
+      const parsedTasks: Task[] = JSON.parse(storedTasks)
       if (!Array.isArray(parsedTasks) || parsedTasks.length !== 2) {
-        throw new Error("Invalid task data");
+        throw new Error("Invalid task data")
       }
 
-      setTasks(parsedTasks);
-      console.log("✅ Loaded tasks from localStorage:", parsedTasks);
+      setTasks(parsedTasks)
+      console.log("✅ Loaded tasks from localStorage:", parsedTasks)
       toast({
         title: "🤖 Victory Plan Loaded!",
         description: "Your personalized tasks are ready!",
-      });
+      })
     } catch (error) {
-      console.error("❌ Error loading tasks:", error);
-      setError(error instanceof Error ? error.message : "Failed to load tasks");
+      console.error("❌ Error loading tasks:", error)
+      setError(error instanceof Error ? error.message : "Failed to load tasks")
       toast({
         title: "Error",
         description: "Failed to load tasks. Please create a new brain dump.",
         variant: "destructive",
-      });
-      router.push("/");
+      })
+      router.push("/")
     } finally {
-      setIsLoading(false);
+      setIsLoading(false)
     }
-  };
+  }
 
   const regenerateTasks = () => {
-    setIsRegenerating(true);
-    triggerHaptic("light");
-    playSound("click");
+    setIsRegenerating(true)
+    triggerHaptic("light")
+    playSound("click")
 
-    localStorage.removeItem("tasks");
-    localStorage.removeItem("brainDump");
-    localStorage.removeItem("timestamp");
+    localStorage.removeItem("currentTasks")
+    localStorage.removeItem("brainDump")
+    localStorage.removeItem("timestamp")
 
     toast({
       title: "New Plan",
       description: "Create a new brain dump to generate fresh tasks.",
-    });
-    router.push("/");
-  };
+    })
+    router.push("/")
+  }
 
   const toggleTask = (taskId: string) => {
-    const updatedTasks = tasks.map((task) =>
-      task.id === taskId ? { ...task, completed: !task.completed } : task
-    );
-    setTasks(updatedTasks);
-    localStorage.setItem("tasks", JSON.stringify(updatedTasks));
+    const updatedTasks = tasks.map((task) => (task.id === taskId ? { ...task, completed: !task.completed } : task))
+    setTasks(updatedTasks)
+    localStorage.setItem("currentTasks", JSON.stringify(updatedTasks))
 
-    const task = updatedTasks.find((t) => t.id === taskId);
+    const task = updatedTasks.find((t) => t.id === taskId)
     if (task?.completed) {
-      triggerHaptic("heavy");
-      playSound("complete");
-      showNotification("🎉 Task Complete!", "Victory achieved! Keep the momentum going!");
+      triggerHaptic("heavy")
+      playSound("complete")
+      showNotification("🎉 Task Complete!", "Victory achieved! Keep the momentum going!")
       toast({
         title: "✅ Victory logged!",
         description: "That's how you build unstoppable momentum!",
-      });
+      })
     } else {
-      triggerHaptic("light");
-      playSound("click");
+      triggerHaptic("light")
+      playSound("click")
     }
-  };
+  }
 
   const startFocusMode = (taskId: string) => {
     try {
-      console.log("🚀 Navigating to /focus with taskId:", taskId);
-      localStorage.setItem("focusTaskId", taskId);
-      triggerHaptic("medium");
-      playSound("success");
-      router.push("/focus");
+      console.log("🚀 Navigating to /focus with taskId:", taskId)
+      localStorage.setItem("focusTaskId", taskId)
+      triggerHaptic("medium")
+      playSound("success")
+      router.push("/focus")
     } catch (error) {
-      console.error("❌ Navigation to /focus failed:", error);
+      console.error("❌ Navigation to /focus failed:", error)
       toast({
         title: "Navigation Error",
         description: "Failed to start focus mode. Please try again.",
         variant: "destructive",
-      });
+      })
     }
-  };
+  }
 
   const getTimeColor = (minutes: number) => {
-    if (minutes <= 10) return "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300";
-    if (minutes <= 20) return "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300";
-    return "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300";
-  };
+    if (minutes <= 10) return "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300"
+    if (minutes <= 20) return "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300"
+    return "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300"
+  }
 
-  const completedCount = tasks.filter((t) => t.completed).length;
-  const totalTasks = tasks.length;
+  const completedCount = tasks.filter((t) => t.completed).length
+  const totalTasks = tasks.length
 
   if (isLoading) {
     return (
@@ -144,14 +141,12 @@ export default function TasksPage() {
             <Brain className="w-12 h-12 mx-auto text-purple-600 dark:text-purple-400 animate-pulse" />
             <Sparkles className="w-6 h-6 absolute -top-1 -right-1 text-yellow-500 animate-spin" />
           </div>
-          <h2 className="text-xl font-semibold mb-2 text-gray-800 dark:text-white">
-            🤖 Loading your victory plan...
-          </h2>
+          <h2 className="text-xl font-semibold mb-2 text-gray-800 dark:text-white">🤖 Loading your victory plan...</h2>
           <p className="text-gray-600 dark:text-gray-300 mb-2">Preparing your tasks ✨</p>
           <div className="text-xs text-purple-600 dark:text-purple-400">Loading • Processing</div>
         </Card>
       </div>
-    );
+    )
   }
 
   if (error && tasks.length === 0) {
@@ -178,7 +173,7 @@ export default function TasksPage() {
           </div>
         </Card>
       </div>
-    );
+    )
   }
 
   return (
@@ -279,8 +274,8 @@ export default function TasksPage() {
                   {!task.completed && (
                     <Button
                       onClick={(e) => {
-                        e.preventDefault();
-                        startFocusMode(task.id);
+                        e.preventDefault()
+                        startFocusMode(task.id)
                       }}
                       size="sm"
                       className="btn-victory transform active:scale-95 transition-transform"
@@ -312,5 +307,5 @@ export default function TasksPage() {
 
       <BottomNav currentPage="tasks" />
     </div>
-  );
+  )
 }

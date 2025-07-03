@@ -1,392 +1,253 @@
+"use client"
 
-"use client";
+import { useState, useEffect } from "react"
+import { Button } from "@/components/ui/button"
+import { Card } from "@/components/ui/card"
+import { Textarea } from "@/components/ui/textarea"
+import { Badge } from "@/components/ui/badge"
+import { Brain, Sparkles, Loader2, Mic, MicOff, RotateCcw } from "lucide-react"
+import { useRouter } from "next/navigation"
+import { useSettings } from "@/hooks/use-settings"
+import { useToast } from "@/hooks/use-toast"
+import BottomNav from "@/components/bottom-nav"
+import { createClient } from "@/lib/supabase/client"
 
-import { useState, useRef, useEffect } from "react";
-import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
-import { Card } from "@/components/ui/card";
-import { Mic, MicOff, Sparkles, Brain } from "lucide-react";
-import { useRouter } from "next/navigation";
-import { useSettings } from "@/hooks/use-settings";
-import { useToast } from "@/hooks/use-toast";
-import BottomNav from "@/components/bottom-nav";
-
-// Define task type
 interface Task {
-  id: string;
-  title: string;
-  estimatedTime: number;
-  completed: boolean;
-  description: string;
-  motivationalLine: string;
+  id: string
+  title: string
+  estimatedTime: number
+  completed: boolean
+  description: string
+  motivationalLine: string
 }
 
-export default function BrainDumpPage() {
-  const [input, setInput] = useState<string>("");
-  const [tasks, setTasks] = useState<Task[] | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [isListening, setIsListening] = useState<boolean>(false);
-  const [isProcessing, setIsProcessing] = useState<boolean>(false);
-  const recognitionRef = useRef<any>(null);
-  const router = useRouter();
-  const { playSound, triggerHaptic } = useSettings();
-  const { toast } = useToast();
-
-  // Replace with your OpenRouter API key (from https://openrouter.ai/)
-  const API_KEY = "your_openrouter_api_key_here"; // WARNING: Exposing client-side is insecure
+export default function HomePage() {
+  const [brainDump, setBrainDump] = useState("")
+  const [isGenerating, setIsGenerating] = useState(false)
+  const [tasks, setTasks] = useState<Task[]>([])
+  const [isListening, setIsListening] = useState(false)
+  const [recognition, setRecognition] = useState<any>(null)
+  const [user, setUser] = useState<any>(null)
+  const router = useRouter()
+  const { playSound, triggerHaptic, showNotification } = useSettings()
+  const { toast } = useToast()
+  const supabase = createClient()
 
   useEffect(() => {
+    // Check authentication
+    const checkAuth = async () => {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser()
+      setUser(user)
+    }
+    checkAuth()
+
     // Initialize speech recognition
     if (typeof window !== "undefined" && "webkitSpeechRecognition" in window) {
-      const SpeechRecognition = (window as any).webkitSpeechRecognition;
-      recognitionRef.current = new SpeechRecognition();
-      recognitionRef.current.continuous = true;
-      recognitionRef.current.interimResults = true;
+      const SpeechRecognition = (window as any).webkitSpeechRecognition
+      const recognitionInstance = new SpeechRecognition()
+      recognitionInstance.continuous = true
+      recognitionInstance.interimResults = true
 
-      recognitionRef.current.onresult = (event: any) => {
-        let transcript = "";
+      recognitionInstance.onresult = (event: any) => {
+        let transcript = ""
         for (let i = event.resultIndex; i < event.results.length; i++) {
-          transcript += event.results[i][0].transcript;
+          transcript += event.results[i][0].transcript
         }
-        setInput((prev) => prev + " " + transcript);
-      };
+        setBrainDump(transcript)
+      }
 
-      recognitionRef.current.onend = () => {
-        setIsListening(false);
-      };
+      recognitionInstance.onend = () => {
+        setIsListening(false)
+      }
+
+      setRecognition(recognitionInstance)
     }
-  }, []);
+
+    // Load existing data
+    loadExistingData()
+  }, [])
+
+  const loadExistingData = async () => {
+    try {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser()
+      if (!user) return
+
+      // Load latest brain dump
+      const { data: brainDumps } = await supabase
+        .from("brain_dumps")
+        .select("*")
+        .eq("user_id", user.id)
+        .order("created_at", { ascending: false })
+        .limit(1)
+
+      if (brainDumps && brainDumps.length > 0) {
+        const latestDump = brainDumps[0]
+        setBrainDump(latestDump.content)
+        if (latestDump.tasks) {
+          setTasks(latestDump.tasks)
+        }
+      }
+    } catch (error) {
+      console.error("Error loading data:", error)
+    }
+  }
 
   const toggleListening = () => {
-    if (!recognitionRef.current) return;
+    if (!recognition) {
+      toast({
+        title: "Speech recognition not supported",
+        description: "Your browser doesn't support speech recognition",
+        variant: "destructive",
+      })
+      return
+    }
 
-    triggerHaptic("light");
-    playSound("click");
+    triggerHaptic("light")
+    playSound("click")
 
     if (isListening) {
-      recognitionRef.current.stop();
-      setIsListening(false);
+      recognition.stop()
+      setIsListening(false)
     } else {
-      recognitionRef.current.start();
-      setIsListening(true);
+      recognition.start()
+      setIsListening(true)
       toast({
         title: "🎤 Listening...",
         description: "Start speaking your thoughts!",
-      });
+      })
     }
-  };
+  }
 
-  const handleStartVictoryPlan = async () => {
-    if (!input.trim()) {
+  const generateTasks = async () => {
+    if (!brainDump.trim()) {
       toast({
-        title: "Error",
-        description: "Brain dump is required",
+        title: "Empty brain dump",
+        description: "Please write or speak your thoughts first!",
         variant: "destructive",
-      });
-      return;
+      })
+      return
     }
 
-    setIsProcessing(true);
-    setError(null);
-    setTasks(null);
-    triggerHaptic("medium");
-    playSound("success");
-
-    const cleanedBrainDump = preprocessBrainDump(input);
-    console.log("🧠 Processing brain dump:", cleanedBrainDump.substring(0, 200));
-
-    // Fetch API key from environment variable
-    const API_KEY = process.env.NEXT_PUBLIC_OPENROUTER_API_KEY;
-
-    if (!API_KEY) {
-      console.log("❌ NO VALID API KEY - You need to add your real OpenRouter API key!");
-      setError("OpenRouter API key required. Please add your API key in the environment variable.");
-      setTasks(generateContextualFallback(cleanedBrainDump));
-      setIsProcessing(false);
-      toast({
-        title: "Error",
-        description: "OpenRouter API key required",
-        variant: "destructive",
-      });
-      return;
-    }
+    setIsGenerating(true)
+    triggerHaptic("medium")
+    playSound("success")
 
     try {
-      console.log("🚀 USING REAL AI with key:", API_KEY.substring(0, 10) + "...");
+      // Save brain dump to Supabase
+      const {
+        data: { user },
+      } = await supabase.auth.getUser()
+      if (user) {
+        const { data: brainDumpData } = await supabase
+          .from("brain_dumps")
+          .insert({
+            user_id: user.id,
+            content: brainDump.trim(),
+          })
+          .select()
+          .single()
 
-      const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+        console.log("Brain dump saved:", brainDumpData)
+      }
+
+      const response = await fetch("/api/breakdown-tasks", {
         method: "POST",
         headers: {
-          Authorization: `Bearer ${API_KEY}`,
-          "HTTP-Referer": "https://your-victory-mode-app.com", // Replace with your app's URL
-          "X-Title": "Victory Mode",
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({
-          model: "meta-llama/llama-3.1-8b-instruct",
-          messages: [
-            {
-              role: "system",
-              content: `You are a genius ADHD productivity assistant. Transform the user's brain dump into exactly 2 specific, actionable tasks.
-
-CRITICAL RULES:
-- Create EXACTLY 2 tasks based on the ACTUAL content
-- Make tasks SPECIFIC to what the user mentioned
-- Each task 5-30 minutes
-- Use the user's exact words/context when possible
-- Fix any typos but keep the meaning
-
-REQUIRED JSON FORMAT:
-[
-  {
-    "id": "task-1",
-    "title": "Specific action based on brain dump",
-    "estimatedTime": 15,
-    "completed": false,
-    "description": "Context from their actual words",
-    "motivationalLine": "One step closer to victory."
-  },
-  {
-    "id": "task-2",
-    "title": "Another specific action from brain dump", 
-    "estimatedTime": 10,
-    "completed": false,
-    "description": "More context from their words",
-    "motivationalLine": "Crush this, then rest."
-  }
-]
-
-EXAMPLES:
-Brain dump: "need to email john about the project and clean my desk"
-Output: [{"title": "Email John about project status", ...}, {"title": "Clear and organize desk space", ...}]
-
-Brain dump: "grocery shopping and call mom about dinner plans"  
-Output: [{"title": "Plan grocery shopping list", ...}, {"title": "Call mom about dinner plans", ...}]
-
-BE SPECIFIC TO THEIR ACTUAL CONTENT!`,
-            },
-            {
-              role: "user",
-              content: `Transform this brain dump into 2 specific tasks. Use their exact context and words:
-
-"${cleanedBrainDump}"
-
-Return ONLY the JSON array.`,
-            },
-          ],
-          temperature: 0.7,
-          max_tokens: 500,
-        }),
-      });
+        body: JSON.stringify({ content: brainDump }),
+      })
 
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(`OpenRouter API error: ${errorData.error?.message || response.statusText}`);
+        throw new Error("Failed to generate tasks")
       }
 
-      const data = await response.json();
-      const text = data.choices[0].message.content;
+      const data = await response.json()
+      setTasks(data.tasks)
 
-      console.log("✅ AI Response received:", text.substring(0, 200));
-
-      const parsedTasks = parseAIResponse(text, cleanedBrainDump);
-
-      if (!parsedTasks || parsedTasks.length !== 2) {
-        console.log("⚠️ AI parsing failed, using contextual fallback");
-        setTasks(generateContextualFallback(cleanedBrainDump));
-        toast({
-          title: "Warning",
-          description: "Failed to parse AI response, using fallback tasks",
-          variant: "default",
-        });
-      } else {
-        console.log("🎯 AI Generated tasks:", parsedTasks);
-        setTasks(parsedTasks);
-        // Store tasks in localStorage for /tasks page
-        localStorage.setItem("tasks", JSON.stringify(parsedTasks));
-        localStorage.setItem("timestamp", new Date().toISOString());
-        // Navigate to tasks page automatically
-        router.push("/tasks");
+      // Update brain dump with tasks in Supabase
+      if (user) {
+        await supabase
+          .from("brain_dumps")
+          .update({ tasks: data.tasks })
+          .eq("user_id", user.id)
+          .eq("content", brainDump.trim())
       }
+
+      // Store tasks in localStorage for the tasks page
+      localStorage.setItem("currentTasks", JSON.stringify(data.tasks))
+      localStorage.setItem("brainDump", brainDump)
+      localStorage.setItem("timestamp", new Date().toISOString())
+
+      triggerHaptic("heavy")
+      playSound("complete")
+      showNotification("🎯 Victory Plan Ready!", "Your thoughts have been transformed into actionable tasks!")
 
       toast({
-        title: "🧠 Victory Plan Created!",
-        description: "Your tasks are ready. Navigating to Plan to view them.",
-      });
-    } catch (aiError) {
-      console.error("🔥 AI generation failed:", aiError);
-      setError(aiError instanceof Error ? aiError.message : String(aiError));
-      setTasks(generateContextualFallback(cleanedBrainDump));
-      toast({
-        title: "Error",
-        description: aiError instanceof Error ? aiError.message : "Failed to generate tasks",
-        variant: "destructive",
-      });
-    } finally {
-      setIsProcessing(false);
-    }
-  };
+        title: "🤖 Victory Plan Generated!",
+        description: `Created ${data.tasks.length} actionable tasks from your brain dump!`,
+      })
 
-  function preprocessBrainDump(text: string): string {
-    let cleaned = text.trim();
-
-    const fixes: { [key: string]: string } = {
-      teh: "the",
-      adn: "and",
-      hte: "the",
-      taht: "that",
-      recieve: "receive",
-      seperate: "separate",
-      definately: "definitely",
-      ur: "your",
-      u: "you",
-      n: "and",
-      "&": "and",
-      "w/": "with",
-      b4: "before",
-      "2": "to",
-      "4": "for",
-      tmrw: "tomorrow",
-      rn: "right now",
-      asap: "as soon as possible",
-      "won't": "will not",
-      "can't": "cannot",
-      "don't": "do not",
-      "i'm": "I am",
-      "i've": "I have",
-      "i'll": "I will",
-    };
-
-    Object.entries(fixes).forEach(([typo, fix]) => {
-      const regex = new RegExp(`\\b${typo}\\b`, "gi");
-      cleaned = cleaned.replace(regex, fix);
-    });
-
-    cleaned = cleaned
-      .replace(/\s+/g, " ")
-      .replace(/([.!?])\s*([a-z])/g, "$1 $2")
-      .trim();
-
-    return cleaned;
-  }
-
-  function parseAIResponse(text: string, brainDump: string): Task[] | null {
-    try {
-      let cleanText = text.trim();
-      cleanText = cleanText
-        .replace(/```json\n?/gi, "")
-        .replace(/```\n?/g, "")
-        .trim();
-
-      const jsonMatch = cleanText.match(/\[[\s\S]*\]/);
-      if (jsonMatch) {
-        cleanText = jsonMatch[0];
-      }
-
-      const tasks: Task[] = JSON.parse(cleanText);
-
-      if (!Array.isArray(tasks) || tasks.length !== 2) {
-        throw new Error(`Expected 2 tasks, got ${tasks.length}`);
-      }
-
-      const validatedTasks = tasks.map((task, index) => ({
-        id: `task-${index + 1}`,
-        title: String(task.title || `Task ${index + 1}`).substring(0, 60),
-        estimatedTime: Math.max(5, Math.min(30, Number(task.estimatedTime) || 15)),
-        completed: false,
-        description: String(task.description || "").substring(0, 200),
-        motivationalLine: index === 0 ? "One step closer to victory." : "Crush this, then rest.",
-      }));
-
-      return validatedTasks;
+      // Automatically redirect to tasks page
+      setTimeout(() => {
+        router.push("/tasks")
+      }, 1000) // Small delay to let the user see the success message
     } catch (error) {
-      console.error("JSON parsing failed:", error);
-      console.log("Raw AI text:", text);
-      return null;
+      console.error("Error generating tasks:", error)
+      toast({
+        title: "Generation failed",
+        description: "Failed to generate tasks. Please try again.",
+        variant: "destructive",
+      })
+    } finally {
+      setIsGenerating(false)
     }
   }
 
-  function generateContextualFallback(brainDump: string): Task[] {
-    const lower = brainDump.toLowerCase();
-    const emailMention = /email|message|text|reply/.test(lower);
-    const callMention = /call|phone|contact/.test(lower);
-    const cleanMention = /clean|tidy|organize|mess/.test(lower);
-    const workMention = /work|project|deadline|meeting/.test(lower);
-    const shopMention = /shop|buy|grocery|store/.test(lower);
-    const healthMention = /exercise|workout|doctor|health/.test(lower);
-    const nameMatch = brainDump.match(/\b[A-Z][a-z]+\b/);
-    const personName = nameMatch ? nameMatch[0] : "someone";
+  const clearAll = () => {
+    setBrainDump("")
+    setTasks([])
+    triggerHaptic("light")
+    playSound("click")
+    toast({
+      title: "🔄 Cleared",
+      description: "Ready for a fresh brain dump!",
+    })
+  }
 
-    let task1: Task, task2: Task;
-
-    if (emailMention) {
-      task1 = {
-        id: "task-1",
-        title: `Send that important email${personName !== "someone" ? ` to ${personName}` : ""}`,
-        estimatedTime: 15,
-        completed: false,
-        description: "Handle your priority email communication",
-        motivationalLine: "One step closer to victory.",
-      };
-    } else if (workMention) {
-      task1 = {
-        id: "task-1",
-        title: "Tackle your most urgent work task",
-        estimatedTime: 20,
-        completed: false,
-        description: "Focus on your highest priority work item",
-        motivationalLine: "One step closer to victory.",
-      };
-    } else {
-      task1 = {
-        id: "task-1",
-        title: "Handle your top priority item",
-        estimatedTime: 15,
-        completed: false,
-        description: "Focus on what matters most right now",
-        motivationalLine: "One step closer to victory.",
-      };
+  const viewTasks = () => {
+    if (tasks.length === 0) {
+      toast({
+        title: "No tasks yet",
+        description: "Generate tasks first!",
+        variant: "destructive",
+      })
+      return
     }
 
-    if (cleanMention) {
-      task2 = {
-        id: "task-2",
-        title: "Quick 10-minute space organization",
-        estimatedTime: 10,
-        completed: false,
-        description: "Clear your immediate environment",
-        motivationalLine: "Crush this, then rest.",
-      };
-    } else if (callMention) {
-      task2 = {
-        id: "task-2",
-        title: `Make that call${personName !== "someone" ? ` to ${personName}` : ""}`,
-        estimatedTime: 10,
-        completed: false,
-        description: "Connect with someone important",
-        motivationalLine: "Crush this, then rest.",
-      };
-    } else if (shopMention) {
-      task2 = {
-        id: "task-2",
-        title: "Plan your shopping trip",
-        estimatedTime: 10,
-        completed: false,
-        description: "Get organized for efficient shopping",
-        motivationalLine: "Crush this, then rest.",
-      };
-    } else {
-      task2 = {
-        id: "task-2",
-        title: "Take care of that second priority",
-        estimatedTime: 10,
-        completed: false,
-        description: "Handle your next important item",
-        motivationalLine: "Crush this, then rest.",
-      };
-    }
+    // Store tasks in localStorage for the tasks page
+    localStorage.setItem("currentTasks", JSON.stringify(tasks))
+    localStorage.setItem("brainDump", brainDump)
+    localStorage.setItem("timestamp", new Date().toISOString())
 
-    return [task1, task2];
+    triggerHaptic("medium")
+    playSound("success")
+    router.push("/tasks")
+  }
+
+  if (!user) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-purple-100 via-pink-50 to-blue-100 dark:from-gray-900 dark:via-purple-900 dark:to-gray-800 flex items-center justify-center">
+        <Card className="p-8 text-center bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm max-w-sm mx-4">
+          <Brain className="w-12 h-12 mx-auto mb-4 text-purple-600 dark:text-purple-400" />
+          <h2 className="text-xl font-semibold mb-2 text-gray-800 dark:text-white">Loading...</h2>
+        </Card>
+      </div>
+    )
   }
 
   return (
@@ -398,64 +259,64 @@ Return ONLY the JSON array.`,
             <Brain className="w-8 h-8 text-purple-600 dark:text-purple-400" />
             <h1 className="text-3xl font-bold text-gray-800 dark:text-white">Victory Mode</h1>
           </div>
-          <h2 className="text-xl text-gray-700 dark:text-gray-200 mb-2 font-semibold">
-            Unleash the chaos. Then bring order.
-          </h2>
-          <p className="text-sm text-purple-600 dark:text-purple-400 font-medium">
-            {["You're not behind. You're starting now.", "The next task is your win.", "Built for minds that move fast — and still want to win.", "Your chaos becomes clarity here.", "Every small step counts."][Math.floor(Math.random() * 5)]}
-          </p>
+          <p className="text-lg text-gray-600 dark:text-gray-300">Dump your thoughts. Get your plan. Start winning.</p>
+          <Badge className="mt-2 bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200">
+            <Sparkles className="w-3 h-3 mr-1" />
+            AI-Powered
+          </Badge>
         </div>
 
-        {/* Main Input Card */}
-        <Card className="p-6 mb-6 shadow-lg border-0 bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm card-hover">
+        {/* Brain Dump Input */}
+        <Card className="p-6 mb-6 bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm card-hover">
           <div className="space-y-4">
-            <label className="block text-xl font-semibold text-gray-800 dark:text-white mb-4">
-              What's on your mind? Dump it all below — big or small.
-            </label>
+            <div className="flex items-center justify-between">
+              <h2 className="text-xl font-semibold text-gray-800 dark:text-white">Brain Dump</h2>
+              <div className="flex gap-2">
+                <Button
+                  onClick={toggleListening}
+                  variant={isListening ? "destructive" : "outline"}
+                  size="sm"
+                  className="transform active:scale-95 transition-transform"
+                >
+                  {isListening ? <MicOff className="w-4 h-4" /> : <Mic className="w-4 h-4" />}
+                </Button>
+                <Button
+                  onClick={clearAll}
+                  variant="outline"
+                  size="sm"
+                  className="transform active:scale-95 transition-transform bg-transparent"
+                >
+                  <RotateCcw className="w-4 h-4" />
+                </Button>
+              </div>
+            </div>
 
             <Textarea
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              placeholder="Work deadlines, personal tasks, random thoughts, worries, ideas, anything that's taking up mental space..."
-              className="min-h-[200px] text-lg border-2 border-purple-200 dark:border-purple-700 focus:border-purple-400 dark:focus:border-purple-500 resize-none bg-white/50 dark:bg-gray-700/50"
-              style={{ fontSize: "18px" }}
+              value={brainDump}
+              onChange={(e) => setBrainDump(e.target.value)}
+              placeholder="What's swirling around in your head? Dump it all here... tasks, ideas, worries, random thoughts. I'll help you make sense of it all."
+              className="min-h-32 resize-none text-base"
+              disabled={isGenerating}
             />
 
-            <div className="flex flex-col gap-3">
+            <div className="flex justify-between items-center">
+              <p className="text-sm text-gray-500 dark:text-gray-400">
+                {brainDump.length} characters {isListening && "• 🎤 Listening..."}
+              </p>
               <Button
-                onClick={toggleListening}
-                variant={isListening ? "destructive" : "outline"}
-                size="lg"
-                className="w-full text-base py-4 px-4 transform active:scale-95 transition-transform min-h-[56px] flex items-center justify-center gap-2"
+                onClick={generateTasks}
+                disabled={isGenerating || !brainDump.trim()}
+                className="btn-victory transform active:scale-95 transition-transform"
               >
-                {isListening ? (
+                {isGenerating ? (
                   <>
-                    <MicOff className="w-5 h-5 flex-shrink-0" />
-                    <span>Stop Recording</span>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    Generating Victory Plan...
                   </>
                 ) : (
                   <>
-                    <Mic className="w-5 h-5 flex-shrink-0" />
-                    <span>Voice Dump</span>
-                  </>
-                )}
-              </Button>
-
-              <Button
-                onClick={handleStartVictoryPlan}
-                disabled={!input.trim() || isProcessing}
-                size="lg"
-                className="w-full text-base py-4 px-4 btn-victory transform active:scale-95 transition-transform min-h-[56px] flex items-center justify-center gap-2"
-              >
-                {isProcessing ? (
-                  <>
-                    <Sparkles className="w-5 h-5 flex-shrink-0 animate-spin" />
-                    <span>Creating Plan...</span>
-                  </>
-                ) : (
-                  <>
-                    <Sparkles className="w-5 h-5 flex-shrink-0" />
-                    <span>Start Victory Plan</span>
+                    <Sparkles className="w-4 h-4 mr-2" />
+                    Generate Victory Plan
                   </>
                 )}
               </Button>
@@ -463,45 +324,50 @@ Return ONLY the JSON array.`,
           </div>
         </Card>
 
-        {/* Display Tasks or Error */}
-        {error && (
-          <Card className="p-4 mb-6 border-red-500 bg-red-50 dark:bg-red-900/20">
-            <p className="text-red-600 dark:text-red-400">{error}</p>
-          </Card>
-        )}
-        {tasks && (
-          <Card className="p-6 mb-6 shadow-lg border-0 bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm">
-            <h3 className="text-xl font-semibold text-gray-800 dark:text-white mb-4">Your Victory Plan</h3>
-            {tasks.map((task) => (
-              <div key={task.id} className="mb-4 p-4 border rounded-lg bg-gray-50 dark:bg-gray-700">
-                <h4 className="font-semibold text-gray-800 dark:text-white">{task.title}</h4>
-                <p className="text-sm text-gray-600 dark:text-gray-300">{task.description}</p>
-                <p className="text-sm text-gray-500 dark:text-gray-400">Time: {task.estimatedTime} min</p>
-                <p className="text-sm text-purple-600 dark:text-purple-400">{task.motivationalLine}</p>
-              </div>
-            ))}
-            <Button
-              onClick={() => router.push("/tasks")}
-              size="lg"
-              className="w-full text-base py-4 px-4 btn-victory transform active:scale-95 transition-transform min-h-[56px]"
-            >
-              View Tasks
+        {/* Generated Tasks Preview - Only show if not generating */}
+        {tasks.length > 0 && !isGenerating && (
+          <Card className="p-6 mb-6 bg-gradient-to-r from-green-50 to-blue-50 dark:from-green-900/20 dark:to-blue-900/20 border-green-200 dark:border-green-800 card-hover">
+            <h3 className="text-xl font-semibold text-gray-800 dark:text-white mb-4">🎯 Your Victory Plan</h3>
+            <div className="space-y-3 mb-4">
+              {tasks.slice(0, 2).map((task, index) => (
+                <div key={task.id} className="flex items-start gap-3 p-3 bg-white dark:bg-gray-700 rounded-lg">
+                  <div className="w-6 h-6 rounded-full bg-purple-100 dark:bg-purple-900 flex items-center justify-center text-sm font-semibold text-purple-600 dark:text-purple-300 mt-0.5">
+                    {index + 1}
+                  </div>
+                  <div className="flex-1">
+                    <h4 className="font-medium text-gray-800 dark:text-white">{task.title}</h4>
+                    <p className="text-sm text-gray-600 dark:text-gray-400">{task.description}</p>
+                    <div className="flex items-center gap-2 mt-2">
+                      <Badge variant="outline" className="text-xs">
+                        {task.estimatedTime} min
+                      </Badge>
+                      <span className="text-xs text-purple-600 dark:text-purple-400 font-medium">
+                        {task.motivationalLine}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+            <Button onClick={viewTasks} className="w-full btn-victory transform active:scale-95 transition-transform">
+              View Full Victory Plan →
             </Button>
           </Card>
         )}
 
-        {/* Quick Tips */}
-        <Card className="p-4 bg-gradient-to-r from-blue-50 to-purple-50 dark:from-blue-900/20 dark:to-purple-900/20 border-blue-200 dark:border-blue-800">
-          <h3 className="font-semibold text-gray-800 dark:text-white mb-2">💡 Pro Tips:</h3>
-          <ul className="text-sm text-gray-600 dark:text-gray-300 space-y-1">
-            <li>• Victory starts with getting it all out of your head</li>
-            <li>• Don't organize - just dump everything</li>
-            <li>• Use voice input for stream-of-consciousness flow</li>
+        {/* Tips */}
+        <Card className="p-6 bg-gradient-to-r from-yellow-50 to-orange-50 dark:from-yellow-900/20 dark:to-orange-900/20 border-yellow-200 dark:border-yellow-800">
+          <h3 className="font-semibold text-gray-800 dark:text-white mb-3">💡 Pro Tips</h3>
+          <ul className="text-sm text-gray-600 dark:text-gray-300 space-y-2">
+            <li>• Use the mic button to speak your thoughts naturally</li>
+            <li>• Include context: "I need to..." or "I'm worried about..."</li>
+            <li>• Don't filter yourself - dump everything that's on your mind</li>
+            <li>• The messier your dump, the better I can help organize it</li>
           </ul>
         </Card>
       </div>
 
       <BottomNav currentPage="dump" />
     </div>
-  );
+  )
 }
