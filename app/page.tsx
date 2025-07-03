@@ -142,7 +142,7 @@ function LandingPage() {
               </div>
               <h3 className="text-lg font-semibold text-gray-800 dark:text-white mb-2">AI Creates Your Plan</h3>
               <p className="text-gray-600 dark:text-gray-300">
-                Our AI transforms your chaos into 2 focused, actionable tasks.
+                Our AI transforms your chaos into focused, actionable tasks.
               </p>
             </div>
 
@@ -188,6 +188,7 @@ export default function HomePage() {
   const [recognition, setRecognition] = useState<any>(null)
   const [user, setUser] = useState<any>(null)
   const [loading, setLoading] = useState(true)
+  const [micPermissionGranted, setMicPermissionGranted] = useState(false)
   const router = useRouter()
   const { playSound, triggerHaptic, showNotification } = useSettings()
   const { toast } = useToast()
@@ -203,28 +204,6 @@ export default function HomePage() {
       setLoading(false)
     }
     checkAuth()
-
-    // Initialize speech recognition
-    if (typeof window !== "undefined" && "webkitSpeechRecognition" in window) {
-      const SpeechRecognition = (window as any).webkitSpeechRecognition
-      const recognitionInstance = new SpeechRecognition()
-      recognitionInstance.continuous = true
-      recognitionInstance.interimResults = true
-
-      recognitionInstance.onresult = (event: any) => {
-        let transcript = ""
-        for (let i = event.resultIndex; i < event.results.length; i++) {
-          transcript += event.results[i][0].transcript
-        }
-        setBrainDump(transcript)
-      }
-
-      recognitionInstance.onend = () => {
-        setIsListening(false)
-      }
-
-      setRecognition(recognitionInstance)
-    }
 
     // Load existing data if user is authenticated
     if (user) {
@@ -259,7 +238,54 @@ export default function HomePage() {
     }
   }
 
+  const requestMicrophonePermission = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+      stream.getTracks().forEach((track) => track.stop()) // Stop the stream immediately
+      setMicPermissionGranted(true)
+
+      // Initialize speech recognition only after permission is granted
+      if (typeof window !== "undefined" && "webkitSpeechRecognition" in window) {
+        const SpeechRecognition = (window as any).webkitSpeechRecognition
+        const recognitionInstance = new SpeechRecognition()
+        recognitionInstance.continuous = true
+        recognitionInstance.interimResults = true
+
+        recognitionInstance.onresult = (event: any) => {
+          let transcript = ""
+          for (let i = event.resultIndex; i < event.results.length; i++) {
+            transcript += event.results[i][0].transcript
+          }
+          setBrainDump(transcript)
+        }
+
+        recognitionInstance.onend = () => {
+          setIsListening(false)
+        }
+
+        setRecognition(recognitionInstance)
+      }
+
+      toast({
+        title: "🎤 Microphone access granted",
+        description: "You can now use voice input for brain dumps!",
+      })
+    } catch (error) {
+      console.error("Microphone permission denied:", error)
+      toast({
+        title: "Microphone access denied",
+        description: "You can still type your thoughts manually.",
+        variant: "destructive",
+      })
+    }
+  }
+
   const toggleListening = () => {
+    if (!micPermissionGranted) {
+      requestMicrophonePermission()
+      return
+    }
+
     if (!recognition) {
       toast({
         title: "Speech recognition not supported",
@@ -447,6 +473,7 @@ export default function HomePage() {
                   variant={isListening ? "destructive" : "outline"}
                   size="sm"
                   className="transform active:scale-95 transition-transform"
+                  title={micPermissionGranted ? "Toggle voice input" : "Enable microphone for voice input"}
                 >
                   {isListening ? <MicOff className="w-4 h-4" /> : <Mic className="w-4 h-4" />}
                 </Button>
@@ -529,7 +556,7 @@ export default function HomePage() {
         <Card className="p-6 bg-gradient-to-r from-yellow-50 to-orange-50 dark:from-yellow-900/20 dark:to-orange-900/20 border-yellow-200 dark:border-yellow-800">
           <h3 className="font-semibold text-gray-800 dark:text-white mb-3">💡 Pro Tips</h3>
           <ul className="text-sm text-gray-600 dark:text-gray-300 space-y-2">
-            <li>• Use the mic button to speak your thoughts naturally</li>
+            <li>• Click the microphone button to enable voice input (optional)</li>
             <li>• Include context: "I need to..." or "I'm worried about..."</li>
             <li>• Don't filter yourself - dump everything that's on your mind</li>
             <li>• The messier your dump, the better I can help organize it</li>
