@@ -1,6 +1,6 @@
 "use client"
 
-import { Brain, CheckSquare, Target, Flame, Settings, LogOut } from "lucide-react"
+import { Brain, CheckSquare, Target, NotepadText, Settings, LogOut } from "lucide-react"
 import { useRouter, usePathname } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { useSettings } from "@/hooks/use-settings"
@@ -79,8 +79,8 @@ export default function BottomNav({ currentPage }: BottomNavProps) {
     },
     {
       id: "ritual",
-      icon: Flame,
-      label: "Ritual",
+      icon: NotepadText,
+      label: "List",
       path: "/ritual",
     },
     {
