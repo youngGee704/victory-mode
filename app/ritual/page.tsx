@@ -9,12 +9,17 @@ import { useSettings } from "@/hooks/use-settings"
 import { useToast } from "@/hooks/use-toast"
 import BottomNav from "@/components/bottom-nav"
 import { Input } from "@/components/ui/input"
-import { createClient } from "@/lib/supabase/client"
 
 interface RitualItem {
   id: string
   text: string
   completed: boolean
+}
+
+interface RitualData {
+  rituals: RitualItem[]
+  streak: number
+  lastCompleted: string | null
 }
 
 export default function RitualPage() {
@@ -25,75 +30,50 @@ export default function RitualPage() {
   const [isLoading, setIsLoading] = useState(true)
   const { playSound, triggerHaptic, showNotification } = useSettings()
   const { toast } = useToast()
-  const supabase = createClient()
 
   useEffect(() => {
     loadRituals()
   }, [])
 
-  const loadRituals = async () => {
+  const loadRituals = () => {
     try {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser()
-      if (!user) return
+      setIsLoading(true)
+      const storedData = localStorage.getItem("ritualData")
+      let ritualData: RitualData
 
-      const { data: ritualData, error } = await supabase.from("rituals").select("*").eq("user_id", user.id).single()
-
-      if (error && error.code !== "PGRST116") {
-        console.error("Error loading rituals:", error)
-        return
-      }
-
-      if (ritualData) {
-        setRituals(ritualData.ritual_data || [])
+      if (storedData) {
+        ritualData = JSON.parse(storedData)
+        setRituals(ritualData.rituals || [])
         setStreak(ritualData.streak || 0)
-        setLastCompleted(ritualData.last_completed)
-      } else {
-        // Set default rituals if none exist
-        const defaultRituals = [
-          { id: "1", text: "Review yesterday's wins", completed: false },
-          { id: "2", text: "Set 3 priorities for today", completed: false },
-          { id: "3", text: "Clear workspace/desk", completed: false },
-          { id: "4", text: "Take 5 deep breaths", completed: false },
-          { id: "5", text: "Drink a glass of water", completed: false },
-        ]
-        setRituals(defaultRituals)
+        setLastCompleted(ritualData.lastCompleted)
       }
     } catch (error) {
-      console.error("Error loading rituals:", error)
+      console.error("Error loading Lists:", error)
+      toast({
+        title: "Load failed",
+        description: "Failed to load rituals. Please try again.",
+        variant: "destructive",
+      })
     } finally {
       setIsLoading(false)
     }
   }
 
-  const saveRituals = async (updatedRituals: RitualItem[], newStreak?: number, newLastCompleted?: string) => {
+  const saveRituals = (updatedRituals: RitualItem[], newStreak?: number, newLastCompleted?: string | null) => {
     try {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser()
-      if (!user) return
-
-      const { error } = await supabase.from("rituals").upsert(
-        {
-          user_id: user.id,
-          ritual_data: updatedRituals,
-          streak: newStreak !== undefined ? newStreak : streak,
-          last_completed: newLastCompleted !== undefined ? newLastCompleted : lastCompleted,
-        },
-        { onConflict: "user_id" },
-      )
-
-      if (error) {
-        console.error("Error saving rituals:", error)
-        toast({
-          title: "Save failed",
-          description: "Failed to save rituals. Please try again.",
-          variant: "destructive",
-        })
+      const ritualData: RitualData = {
+        rituals: updatedRituals,
+        streak: newStreak !== undefined ? newStreak : streak,
+        lastCompleted: newLastCompleted !== undefined ? newLastCompleted : lastCompleted,
       }
+      localStorage.setItem("ritualData", JSON.stringify(ritualData))
     } catch (error) {
       console.error("Error saving rituals:", error)
+      toast({
+        title: "Save failed",
+        description: "Failed to save to List . Please try again.",
+        variant: "destructive",
+      })
     }
   }
 
@@ -109,7 +89,7 @@ export default function RitualPage() {
       triggerHaptic("medium")
       playSound("success")
       toast({
-        title: "✅ Ritual complete!",
+        title: "✅ Tasks complete!",
         description: "Building that momentum!",
       })
     } else {
@@ -141,7 +121,7 @@ export default function RitualPage() {
       showNotification("🔥 Victory Ritual Complete!", `${newStreak} day streak! You're unstoppable!`)
 
       toast({
-        title: "🔥 Victory Ritual Complete!",
+        title: "🔥 Victory Lists Complete!",
         description: `${newStreak} day streak! You're building unstoppable momentum!`,
       })
     }
@@ -155,7 +135,7 @@ export default function RitualPage() {
     triggerHaptic("light")
     playSound("click")
     toast({
-      title: "🔄 Rituals reset",
+      title: "🔄 Lists have been reset",
       description: "Ready for another victory session!",
     })
   }
@@ -177,7 +157,7 @@ export default function RitualPage() {
     triggerHaptic("light")
     playSound("success")
     toast({
-      title: "✨ Ritual added!",
+      title: "✨ Task added!",
       description: "Your victory routine is getting stronger!",
     })
   }
@@ -190,8 +170,8 @@ export default function RitualPage() {
     triggerHaptic("light")
     playSound("click")
     toast({
-      title: "🗑️ Ritual removed",
-      description: "Ritual removed from your routine",
+      title: "🗑️ Task removed",
+      description: "Task removed from your routine",
     })
   }
 
@@ -206,7 +186,7 @@ export default function RitualPage() {
     return (
       <div className="min-h-screen bg-gradient-to-br from-purple-100 via-pink-50 to-blue-100 dark:from-gray-900 dark:via-purple-900 dark:to-gray-800 flex items-center justify-center pb-20">
         <Card className="p-8 text-center bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm">
-          <p className="text-lg text-gray-800 dark:text-white">Loading your victory rituals...</p>
+          <p className="text-lg text-gray-800 dark:text-white">Loading your victory List...</p>
         </Card>
       </div>
     )
@@ -219,10 +199,10 @@ export default function RitualPage() {
         <div className="text-center mb-8">
           <div className="flex items-center justify-center gap-2 mb-4">
             <Flame className="w-8 h-8 text-orange-500" />
-            <h1 className="text-3xl font-bold text-gray-800 dark:text-white">Victory Rituals</h1>
+            <h1 className="text-3xl font-bold text-gray-800 dark:text-white">Victory List</h1>
           </div>
           <p className="text-lg text-gray-600 dark:text-gray-300 mb-4">
-            Start your day with intention. Build unstoppable momentum.
+            Capture tasks, chaos, and ideas before diving into focus mode
           </p>
 
           {/* Streak Display */}
@@ -307,7 +287,7 @@ export default function RitualPage() {
             <Input
               value={newRitualText}
               onChange={(e) => setNewRitualText(e.target.value)}
-              placeholder="Add a new ritual (e.g., 'Write 3 things I'm grateful for')"
+              placeholder="Type a thought, task, or idea..."
               className="flex-1"
               onKeyPress={(e) => e.key === "Enter" && addRitual()}
             />
@@ -327,7 +307,7 @@ export default function RitualPage() {
             <Card className="p-6 bg-gradient-to-r from-green-50 to-blue-50 dark:from-green-900/20 dark:to-blue-900/20 border-green-200 dark:border-green-800 text-center">
               <h3 className="text-xl font-semibold text-gray-800 dark:text-white mb-2">🎉 Victory Ritual Complete!</h3>
               <p className="text-gray-600 dark:text-gray-300 mb-4">
-                You've completed all your rituals! Your {streak} day streak is building unstoppable momentum.
+                You've completed all your Tasks! Your {streak} day streak is building unstoppable momentum.
               </p>
               <Badge className="bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-300">
                 <Flame className="w-4 h-4 mr-1" />
@@ -342,18 +322,18 @@ export default function RitualPage() {
             className="w-full transform active:scale-95 transition-transform bg-transparent"
           >
             <RotateCcw className="w-4 h-4 mr-2" />
-            Reset Rituals
+            Reset Victory List
           </Button>
         </div>
 
         {/* Tips */}
         <Card className="mt-6 p-6 bg-gradient-to-r from-yellow-50 to-orange-50 dark:from-yellow-900/20 dark:to-orange-900/20 border-yellow-200 dark:border-yellow-800">
-          <h3 className="font-semibold text-gray-800 dark:text-white mb-3">💡 Victory Ritual Tips</h3>
+          <h3 className="font-semibold text-gray-800 dark:text-white mb-3">💡 Victory List Tips</h3>
           <ul className="text-sm text-gray-600 dark:text-gray-300 space-y-2">
-            <li>• Complete your rituals first thing in the morning</li>
-            <li>• Keep rituals simple and achievable (2-5 minutes each)</li>
+            <li>• Complete your Victory Lists first thing in the morning</li>
+            <li>• Keep List simple and achievable (2-5 minutes each)</li>
             <li>• Focus on actions that set you up for success</li>
-            <li>• Consistency beats perfection - even 1 ritual is a win</li>
+            <li>• Consistency beats perfection - even 1 Task completed is a win</li>
             <li>• Your streak builds momentum and confidence</li>
           </ul>
         </Card>
