@@ -29,7 +29,7 @@ export async function middleware(request: NextRequest) {
   } = await supabase.auth.getUser();
 
   const { pathname, search } = request.nextUrl;
-  const normalizedPathname = pathname.replace(/\/$/, ""); // Remove trailing slash
+  const normalizedPathname = pathname.replace(/\/$/, "") || "/"; // Ensure empty path is treated as "/"
 
   // Debug log to verify route
   console.log(`Middleware: Processing path: ${normalizedPathname}${search}`);
@@ -45,6 +45,12 @@ export async function middleware(request: NextRequest) {
     "/not-found",
   ];
   const publicApiRoutes = ["/api/auth"];
+
+  // Explicitly allow homepage (/)
+  if (normalizedPathname === "/") {
+    console.log(`Middleware: Specifically allowing homepage: ${normalizedPathname}${search}`);
+    return supabaseResponse;
+  }
 
   // Explicitly allow /confirm
   if (normalizedPathname === "/confirm") {
