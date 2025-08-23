@@ -11,13 +11,15 @@ import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Brain, Mail, ArrowLeft, Loader2, CheckCircle } from "lucide-react"
 import Link from "next/link"
 import { useToast } from "@/hooks/use-toast"
+import { createClient } from "@/lib/supabase/client"
 
-export default function ForgotPasswordPage() {
+export default function MagicLinkPage() {
   const [email, setEmail] = useState("")
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState("")
   const [success, setSuccess] = useState(false)
   const { toast } = useToast()
+  const supabase = createClient()
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -25,25 +27,25 @@ export default function ForgotPasswordPage() {
     setError("")
 
     try {
-      const response = await fetch("/api/auth/reset-password", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email }),
+      const { error } = await supabase.auth.signInWithOtp({
+        email: email,
+        options: {
+          emailRedirectTo: `${window.location.origin}api/auth/callback?next=/dashboard`,
+          shouldCreateUser: false, // Only send magic link to existing users, or set to true to create new users
+        },
       })
 
-      const data = await response.json()
-
-      if (response.ok) {
+      if (error) {
+        setError(error.message)
+      } else {
         setSuccess(true)
         toast({
-          title: "📧 Reset link sent!",
-          description: "Check your email for password reset instructions.",
+          title: "🔗 Magic link sent!",
+          description: "Check your email for your secure login link.",
         })
-      } else {
-        setError(data.error || "Failed to send reset email")
       }
     } catch (error) {
-      console.error("Password reset error:", error)
+      console.error("Magic link error:", error)
       setError("Network error. Please try again.")
     } finally {
       setIsLoading(false)
@@ -58,8 +60,7 @@ export default function ForgotPasswordPage() {
             <CheckCircle className="w-16 h-16 text-green-500 mx-auto mb-4" />
             <h1 className="text-2xl font-bold text-gray-800 dark:text-white mb-4">Check Your Email</h1>
             <p className="text-gray-600 dark:text-gray-400 mb-6">
-              We've sent password reset instructions to <strong>{email}</strong>. Please check your email and follow the
-              link to reset your password.
+              We've sent a secure login link to <strong>{email}</strong>. Click the link in your email to log in instantly - no password required!
             </p>
             <div className="space-y-4">
               <Button
@@ -90,10 +91,10 @@ export default function ForgotPasswordPage() {
         <div className="text-center mb-8">
           <div className="flex items-center justify-center gap-2 mb-4">
             <Brain className="w-8 h-8 text-blue-600 dark:text-blue-400" />
-            <h1 className="text-2xl font-bold text-gray-800 dark:text-white">Reset Password</h1>
+            <h1 className="text-2xl font-bold text-gray-800 dark:text-white">Magic Link Login</h1>
           </div>
           <p className="text-gray-600 dark:text-gray-400">
-            Enter your email address and we'll send you a link to reset your password.
+            Enter your email address and we'll send you a secure login link. No password needed!
           </p>
         </div>
 
@@ -131,10 +132,10 @@ export default function ForgotPasswordPage() {
             {isLoading ? (
               <>
                 <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                Sending reset link...
+                Sending magic link...
               </>
             ) : (
-              "Send Reset Link"
+              "Send Magic Link"
             )}
           </Button>
         </form>
