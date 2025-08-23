@@ -19,7 +19,7 @@ export async function POST(request: NextRequest) {
       email: email.toLowerCase(),
       password,
       options: {
-        emailRedirectTo: `${process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000"}/api/auth/callback?next=/confirm`,
+        emailRedirectTo: `${process.env.NEXT_PUBLIC_SITE_URL || "https://victory-mode.vercel.app"}/api/auth/callback?next=/confirm`,
       },
     })
 
